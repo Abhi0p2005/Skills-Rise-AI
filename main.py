@@ -35,10 +35,11 @@ from database import init_db, get_db, workers, jobs, courses, worker_progress
 load_dotenv()
 init_db()  # Initialize the database on startup
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("gigpilot_ai")
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+logger.info(f"DEBUG: GROQ_API_KEY loaded: {bool(GROQ_API_KEY)}")
 
 # ---------------------------------------------------------------------------
 # Deterministic Safety Net Keywords
@@ -72,8 +73,34 @@ class WorkerState(TypedDict, total=False):
     is_unsafe: bool
 
 # ---------------------------------------------------------------------------
-# LLM Client (Groq)
+# LLM Client (Groq) with Rate Limiter (Max 15 RPM)
 # ---------------------------------------------------------------------------
+
+import time
+import threading
+
+class RateLimitedChatGroq(ChatGroq):
+    """A wrapper around ChatGroq to limit requests to maximum 15 RPM (4s delay)."""
+    _last_request_time: float = 0.0
+    _lock: threading.Lock = threading.Lock()
+
+    def _delay_if_needed(self):
+        with self._lock:
+            now = time.time()
+            elapsed = now - RateLimitedChatGroq._last_request_time
+            # 15 RPM = 1 request every 4.0 seconds
+            wait_time = 4.0 - elapsed
+            if wait_time > 0:
+                time.sleep(wait_time)
+            RateLimitedChatGroq._last_request_time = time.time()
+
+    def invoke(self, *args, **kwargs):
+        self._delay_if_needed()
+        return super().invoke(*args, **kwargs)
+
+    async def ainvoke(self, *args, **kwargs):
+        self._delay_if_needed()
+        return await super().ainvoke(*args, **kwargs)
 
 def get_llm() -> ChatGroq:
     if not GROQ_API_KEY:
@@ -81,7 +108,7 @@ def get_llm() -> ChatGroq:
             "GROQ_API_KEY is not set. Export it as an environment variable "
             "or place it in a .env file."
         )
-    return ChatGroq(
+    return RateLimitedChatGroq(
         model="llama-3.3-70b-versatile",
         temperature=0,
         api_key=GROQ_API_KEY,
@@ -372,6 +399,49 @@ def job_matcher_node(state: WorkerState) -> WorkerState:
     }
 
 # ---------------------------------------------------------------------------
+# Node 5: Career Advisor (New Node for personalized advice)
+# ---------------------------------------------------------------------------
+
+def career_advisor_node(state: WorkerState) -> WorkerState:
+    worker_name = state.get("worker_name")
+    career_goal = state.get("career_goal")
+    current_skills = state.get("current_skills") or []
+    
+    try:
+        llm = get_llm()
+        system_prompt = (
+            "You are a professional career advisor for vocational workers. "
+            "Provide personalized, empathetic, and actionable advice to the worker. "
+            "Include: 1) A clear roadmap of steps to achieve their goal based on their current skills. "
+            "2) Encouraging life/career advice. "
+            "Respond in a friendly, conversational tone, using Markdown for readability."
+        )
+        human_prompt = (
+            f"Worker Name: {worker_name}\n"
+            f"Career Goal: {career_goal}\n"
+            f"Current Skills: {', '.join(current_skills)}"
+        )
+        
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_prompt),
+        ])
+        
+        advice = response.content
+        log_line = f"[career_advisor] Generated personalized roadmap for '{worker_name}'."
+        
+        if worker_name in workers:
+            workers[worker_name]["logs"] = (workers[worker_name]["logs"] or "") + "\n" + log_line + "\n" + advice
+            
+        return {
+            **state,
+            "logs": (state.get("logs", "") + "\n" + log_line + "\n" + advice).strip(),
+        }
+    except Exception as e:
+        logger.error(f"Error in Career Advisor: {e}")
+        return state
+
+# ---------------------------------------------------------------------------
 # Graph Construction
 # ---------------------------------------------------------------------------
 
@@ -381,6 +451,7 @@ def build_graph():
     graph.add_node("intake_node", intake_node)
     graph.add_node("safety_filter_node", safety_filter_node)
     graph.add_node("skill_gap_analyzer_node", skill_gap_analyzer_node)
+    graph.add_node("career_advisor_node", career_advisor_node)
     graph.add_node("job_matcher_node", job_matcher_node)
 
     graph.set_entry_point("intake_node")
@@ -395,7 +466,8 @@ def build_graph():
         },
     )
 
-    graph.add_edge("skill_gap_analyzer_node", "job_matcher_node")
+    graph.add_edge("skill_gap_analyzer_node", "career_advisor_node")
+    graph.add_edge("career_advisor_node", "job_matcher_node")
     graph.add_edge("job_matcher_node", END)
 
     return graph.compile()
