@@ -419,6 +419,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/", response_class=HTMLResponse)
+async def read_index():
+    print("Serving index.html")
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
 class IntakeRequest(BaseModel):
     worker_name: str = Field(..., description="Full name of the worker")
     current_skills: List[str] = Field(default_factory=list, description="List of current skills")
