@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GigPilot AI — Next-Gen Vocational Upskilling Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for premium iconography -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .terminal-log {
+            background-color: #0b0f19;
+            color: #38bdf8;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Subtle Animations */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slideup {
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Top Glow Ornament -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[350px] bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-violet-500/10 blur-[120px] pointer-events-none rounded-full"></div>
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 w-full glass border-b border-slate-200/80 shadow-sm transition-all">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <!-- Logo Section -->
+            <div class="flex items-center space-x-3.5">
+                <div class="bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 p-2.5 rounded-2xl text-white shadow-md shadow-indigo-600/20">
+                    <i class="fa-solid fa-graduation-cap text-2xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">GigPilot AI</span>
+                        <span class="bg-indigo-100 text-indigo-700 font-bold text-[10px] uppercase px-1.5 py-0.5 rounded-md tracking-wider">v2.1</span>
+                        <span class="bg-emerald-100 text-emerald-700 font-bold text-[9px] uppercase px-2 py-0.5 rounded-full tracking-wider border border-emerald-200/50">
+                            <i class="fa-solid fa-hand-holding-heart mr-0.5"></i> SDG 8
+                        </span>
+                    </div>
+                    <p class="text-[11px] font-medium text-slate-500">UN Sustainable Development Goal 8: Decent Work & Economic Growth</p>
+                </div>
+            </div>
+
+            <!-- Global Controls & Status -->
+            <div class="flex flex-wrap items-center justify-center gap-3.5">
+                <!-- API URL Config Toggle Button -->
+                <button onclick="toggleSettingsModal()" class="flex items-center space-x-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all shadow-sm border border-slate-200/50">
+                    <i class="fa-solid fa-gears text-slate-500"></i>
+                    <span>API Endpoint Settings</span>
+                </button>
+
+                <!-- Server connection pill -->
+                <div id="connection-badge" class="bg-slate-100 text-slate-600 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-slate-500" id="badge-dot"></span>
+                    </span>
+                    <span id="badge-text">Checking System...</span>
+                </div>
+
+                <button onclick="checkHealth()" class="text-slate-500 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 p-2 rounded-xl transition-all shadow-sm">
+                    <i class="fa-solid fa-rotate-right text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Layout -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+        
+        <!-- LEFT SIDEBAR: INTAKE & PROFILE (Col span 4) -->
+        <div class="lg:col-span-4 space-y-6">
+            <!-- Worker Intake Panel -->
+            <div class="bg-white/90 rounded-3xl shadow-xl shadow-slate-100/40 border border-slate-200/60 p-6 relative overflow-hidden transition-all hover:shadow-2xl hover:shadow-slate-200/50">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="bg-indigo-50 p-2 rounded-xl text-indigo-600">
+                        <i class="fa-solid fa-id-card-clip text-xl"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-slate-900">Worker Profile Intake</h2>
+                </div>
+                
+                <form id="intake-form" onsubmit="submitIntake(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Worker Full Name</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                                <i class="fa-solid fa-user"></i>
+                            </span>
+                            <input type="text" id="worker_name" required placeholder="e.g. Ramesh Patil" 
+                                class="w-full pl-10 pr-4 py-3 bg-slate-50/60 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm placeholder-slate-400 font-medium text-slate-800">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Current Active Skills</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                            </span>
+                            <input type="text" id="current_skills" placeholder="e.g. electrical wiring, manual labor" 
+                                class="w-full pl-10 pr-4 py-3 bg-slate-50/60 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm placeholder-slate-400 font-medium text-slate-800">
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1.5 ml-1">Separate with commas (e.g., skillA, skillB)</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Aspirational Career Goal</label>
+                        <div class="relative">
+                            <span class="absolute top-3 left-3.5 text-slate-400">
+                                <i class="fa-solid fa-bullseye"></i>
+                            </span>
+                            <textarea id="career_goal" rows="3" required placeholder="e.g. I want to build a career in installing residential solar panels and green energy setups safely." 
+                                class="w-full pl-10 pr-4 py-3 bg-slate-50/60 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm placeholder-slate-400 font-medium text-slate-800 resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-submit" 
+                        class="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-700 hover:via-indigo-700 hover:to-violet-700 text-white font-bold py-3.5 px-4 rounded-2xl transition-all shadow-md shadow-indigo-600/10 hover:shadow-lg hover:shadow-indigo-600/20 flex justify-center items-center space-x-2.5">
+                        <span>Launch GigPilot AI Agent</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Active User Profile Card -->
+            <div id="worker-card" class="bg-white/95 rounded-3xl shadow-xl shadow-slate-100/40 border border-slate-200/60 p-6 hidden animate-slideup relative overflow-hidden">
+                <div class="absolute -top-12 -left-12 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="flex items-center justify-between mb-5">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Profile Summary</h3>
+                    <div id="safety-badge-container" class="flex items-center gap-2">
+                        <span class="bg-amber-50 text-amber-700 text-[8px] font-bold px-2 py-0.5 rounded-full border border-amber-200/40 uppercase tracking-wider">
+                            <i class="fa-solid fa-hand-holding-heart mr-0.5"></i> SDG 8
+                        </span>
+                        <span id="badge-unsafe" class="bg-red-50 text-red-600 border border-red-200/50 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center space-x-1 hidden">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>BLOCKED</span>
+                        </span>
+                        <span id="badge-safe" class="bg-emerald-50 text-emerald-700 border border-emerald-200/50 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center space-x-1">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <span>VERIFIED SAFE</span>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-gradient-to-tr from-blue-500 to-indigo-600 text-white font-extrabold rounded-2xl flex items-center justify-center text-lg shadow-md shadow-indigo-500/10" id="profile-initials">
+                            RP
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-base font-bold text-slate-900 truncate" id="profile-name">Ramesh Patil</h4>
+                            <p class="text-xs text-slate-500 truncate" id="profile-goal">Solar Technician Goal</p>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-slate-100 my-4"></div>
+                    
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">Skills Dashboard</p>
+                        <div class="flex flex-wrap gap-1.5" id="profile-skills">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT AREA: AI ADVICE, CHALLENGES & PLACEMENTS (Col span 8) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Dual-Layer Safety Alert Banner -->
+            <div id="safety-alert" class="bg-red-50/90 border border-red-200 p-5 rounded-3xl hidden animate-slideup flex items-start space-x-4 shadow-sm">
+                <div class="bg-red-100 text-red-600 p-2 rounded-2xl flex-shrink-0">
+                    <i class="fa-solid fa-shield-cat text-2xl"></i>
+                </div>
+                <div>
+                    <h4 class="text-red-900 font-bold text-base">Dual-Layer AI Safety Intervention Active</h4>
+                    <p class="text-red-700 text-sm mt-1" id="safety-message">Our programmatic keyword scanner or LLM Safety Auditor flagged potential labor exploitation, illegal, or hazardous practices. Placement is currently locked.</p>
+                </div>
+            </div>
+
+            <!-- Dynamic Career Roadmap Section -->
+            <div id="roadmap-section" class="bg-white rounded-3xl shadow-xl shadow-slate-100/40 border border-slate-200/60 p-6 hidden animate-slideup relative">
+                <div class="flex items-center space-x-2.5 mb-5">
+                    <div class="bg-emerald-50 text-emerald-600 p-2 rounded-xl">
+                        <i class="fa-solid fa-compass text-xl"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-slate-900">Personalized Career Roadmap (AI Advisor)</h2>
+                    <span class="bg-amber-50 text-amber-700 text-[8px] font-bold px-2 py-0.5 rounded-full border border-amber-200/40 uppercase tracking-wider ml-auto">SDG 8 Aligned</span>
+                </div>
+                <div class="prose prose-emerald max-w-none text-slate-600 text-sm leading-relaxed whitespace-pre-wrap bg-gradient-to-br from-emerald-50/50 to-amber-50/30 rounded-2xl p-5 border border-emerald-100" id="roadmap-content">
+                    <!-- AI Career Roadmap rendered here -->
+                </div>
+            </div>
+
+            <!-- Micro-Learning Skill-Up Course Section -->
+            <div id="course-section" class="bg-white rounded-3xl shadow-xl shadow-slate-100/40 border border-slate-200/60 p-6 hidden animate-slideup">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="bg-amber-50 text-amber-500 p-2 rounded-xl">
+                            <i class="fa-solid fa-graduation-cap text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">Assigned Micro-Learning Module</h2>
+                            <p class="text-xs text-slate-500">Bridge your identified skill gaps instantly</p>
+                        </div>
+                    </div>
+                    <span class="bg-amber-50 text-amber-800 border border-amber-200/40 text-xs font-bold px-3.5 py-1.5 rounded-xl uppercase tracking-wider" id="course-skill">
+                        SOLAR PANEL INSTALLATION
+                    </span>
+                </div>
+                
+                <!-- Lesson Steps Layout -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="course-lessons">
+                    <!-- Micro-lessons populated here -->
+                </div>
+
+                <!-- Quiz Interactive Container -->
+                <div class="bg-slate-50 border border-slate-200/60 rounded-2xl p-5" id="quiz-container">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="bg-amber-100 text-amber-700 p-1.5 rounded-lg text-sm">
+                                <i class="fa-solid fa-vial"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 text-sm">MCQ Skills Challenge</h4>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="quiz-progress" class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">0 / 0</span>
+                            <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">60% to Pass</span>
+                        </div>
+                    </div>
+                    
+                    <div id="mcq-questions" class="space-y-5">
+                        <!-- MCQ questions populated here -->
+                    </div>
+
+                    <div class="mt-6 flex items-center justify-between">
+                        <span id="quiz-error" class="text-xs text-rose-600 font-semibold hidden"></span>
+                        <button onclick="submitMcqQuiz()" id="btn-quiz" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-2xl text-xs transition-all shadow-md shadow-indigo-600/10 flex items-center space-x-2">
+                            <span>Submit All Answers</span>
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </button>
+                    </div>
+
+                    <div id="quiz-result" class="mt-4 text-sm font-semibold p-5 rounded-xl hidden"></div>
+                </div>
+
+                <!-- Course Completed Success Box -->
+                <div id="quiz-passed-box" class="bg-gradient-to-tr from-emerald-50 to-teal-50/50 border border-emerald-200 rounded-2xl p-6 hidden items-center space-x-4">
+                    <div class="bg-gradient-to-tr from-emerald-500 to-teal-500 text-white p-3 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/15">
+                        <i class="fa-solid fa-medal text-2xl animate-bounce"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-emerald-900 font-extrabold text-base">Vocational Course Complete!</h4>
+                        <p class="text-emerald-700 text-xs mt-0.5">You've mastered this subject. The verified skill is added to your profile & your placements are unlocked!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placements & Job Postings Grid -->
+            <div id="jobs-section" class="bg-white rounded-3xl shadow-xl shadow-slate-100/40 border border-slate-200/60 p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="bg-emerald-50 text-emerald-600 p-2 rounded-xl">
+                            <i class="fa-solid fa-briefcase text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">Decent Work Placements (SDG 8)</h2>
+                            <p class="text-xs text-slate-500 font-medium">AI-generated dignified jobs with fair wages, safety, and growth opportunities</p>
+                        </div>
+                    </div>
+                    <span id="jobs-count" class="bg-emerald-50 text-emerald-700 border border-emerald-200/40 text-xs font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider">
+                        0 Vacancies Generated
+                    </span>
+                </div>
+
+                <!-- Job Grid -->
+                <div id="jobs-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="col-span-full text-center py-12 text-slate-400 bg-slate-50/40 border border-dashed border-slate-200 rounded-3xl">
+                        <div class="bg-slate-100 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
+                            <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                        </div>
+                        <h5 class="text-slate-800 font-semibold text-sm">No Active Session</h5>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1">Please insert Ramesh or Ravi's details in the Intake form to spin up the agent and generate listings.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live LangGraph Console (Logs) -->
+            <div class="bg-slate-900 rounded-3xl shadow-xl border border-slate-800 overflow-hidden">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
+                    <div class="flex items-center space-x-2">
+                        <span class="flex space-x-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-lg shadow-rose-500/20"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-lg shadow-amber-500/20"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/20"></span>
+                        </span>
+                        <span class="text-xs font-bold text-slate-400 font-mono pl-3">LangGraph Orchestrator Execution Console</span>
+                    </div>
+                    <span class="text-[9px] text-indigo-400 uppercase tracking-wider font-bold bg-indigo-950/50 border border-indigo-900/30 px-2 py-0.5 rounded-md">Live Stream</span>
+                </div>
+                <div id="console-logs" class="terminal-log p-6 h-[220px] overflow-y-auto text-xs space-y-2 font-mono whitespace-pre-wrap custom-scrollbar">
+> Console ready. Complete the Intake form to execute the LangGraph worker flow.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Global API Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/45 backdrop-blur-sm hidden transition-all">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 p-6 relative animate-slideup">
+            <button onclick="toggleSettingsModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 bg-slate-50 p-1.5 rounded-xl transition-all">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+            <div class="flex items-center space-x-2.5 mb-5">
+                <div class="bg-indigo-50 text-indigo-600 p-2 rounded-xl">
+                    <i class="fa-solid fa-network-wired"></i>
+                </div>
+                <h3 class="font-bold text-slate-900 text-base">API Server Endpoint Settings</h3>
+            </div>
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                Connect your frontend to any GigPilot AI Backend server. Perfect for switching seamlessly between a local server and Render.
+            </p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Backend Server URL</label>
+                    <input type="text" id="api-url-input" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs font-mono font-medium" placeholder="http://127.0.0.1:8000">
+                </div>
+                <button onclick="saveApiUrl()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/10 flex justify-center items-center space-x-1.5">
+                    <span>Save Server Configuration</span>
+                    <i class="fa-solid fa-floppy-disk"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200/60 py-10 mt-16 text-center text-xs text-slate-400 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col items-center gap-2">
+            <p class="font-semibold text-slate-600">GigPilot AI - Built for SDG 8: Decent Work & Economic Growth</p>
+            <p class="text-slate-400 text-[11px]">Powered by LangGraph, FastAPI Server (In-Memory Session Store) and Llama 3.3-70B on Groq</p>
+            <div class="flex items-center space-x-2 mt-4 text-[10px] font-mono text-slate-400">
+                <span>Vercel Frontend</span>
+                <span>•</span>
+                <span>Render Backend</span>
+                <span>•</span>
+                <span>No-DB Stack</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Frontend logic with Fetch -->
+    <script>
+        // Check for saved API URL in localStorage or fallback
+        let API_URL = localStorage.getItem("GIGPILOT_API_URL") || "http://127.0.0.1:8000";
+        document.getElementById("api-url-input").value = API_URL;
+
+        let currentWorkerName = "";
+        let currentSkillName = "";
+
+        // Modal triggers
+        function toggleSettingsModal() {
+            const modal = document.getElementById("settings-modal");
+            modal.classList.toggle("hidden");
+        }
+
+        function saveApiUrl() {
+            const inputVal = document.getElementById("api-url-input").value.trim();
+            if (inputVal) {
+                // Ensure no trailing slash
+                API_URL = inputVal.endsWith("/") ? inputVal.slice(0, -1) : inputVal;
+                localStorage.setItem("GIGPILOT_API_URL", API_URL);
+                toggleSettingsModal();
+                checkHealth();
+                updateLogs(`> Saved Server API Target: ${API_URL}`);
+            }
+        }
+
+        async function checkHealth() {
+            const badge = document.getElementById("connection-badge");
+            const dot = document.getElementById("badge-dot");
+            const text = document.getElementById("badge-text");
+
+            badge.className = "bg-amber-50 text-amber-600 border border-amber-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm animate-pulse";
+            dot.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
+            text.textContent = "Connecting...";
+
+            try {
+                const startTime = performance.now();
+                const response = await fetch(`${API_URL}/health`, { mode: 'cors' });
+                const duration = Math.round(performance.now() - startTime);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    badge.className = "bg-emerald-50 text-emerald-700 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
+                    dot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+                    text.textContent = `Online (${duration}ms)`;
+                } else {
+                    throw new Error("Bad status");
+                }
+            } catch (err) {
+                console.error("Health check failed:", err);
+                badge.className = "bg-rose-50 text-rose-600 border border-rose-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
+                dot.className = "relative inline-flex rounded-full h-2 w-2 bg-rose-500";
+                text.textContent = "Offline (Click Setup)";
+            }
+        }
+
+        async function submitIntake(event) {
+            event.preventDefault();
+            
+            const worker_name = document.getElementById("worker_name").value.trim();
+            const raw_skills = document.getElementById("current_skills").value.trim();
+            const career_goal = document.getElementById("career_goal").value.trim();
+
+            const current_skills = raw_skills ? raw_skills.split(",").map(s => s.trim()) : [];
+
+            // Loading state
+            const btnSubmit = document.getElementById("btn-submit");
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> <span>Evaluating with AI Agent...</span>`;
+
+            updateLogs("> [SYSTEM] Initializing LangGraph StateGraph pipeline...\n> [SYSTEM] Injecting WorkerState inputs...\n> [SYSTEM] Waiting for Rate Limiter (strictly below 5 RPM enforcement)...\n> [AGENT] Invoking Safety Auditor, Career Advisor, and Placement Generator...");
+
+            try {
+                const res = await fetch(`${API_URL}/run-agent`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ worker_name, current_skills, career_goal }),
+                    mode: 'cors'
+                });
+
+                if (!res.ok) throw new Error("Agent run failed.");
+
+                const data = await res.ok ? await res.json() : null;
+                if (!data) return;
+
+                currentWorkerName = data.worker_name;
+
+                // Render Logs
+                updateLogs(data.logs);
+
+                // Check for safety override block
+                if (data.is_unsafe) {
+                    showSafetyAlert(true, "Programmatic or AI Auditor safety block was triggered. The stated career goal may involve hazardous, illegal, or exploitative labor practices. Application matching has been halted for protection.");
+                    hideSections();
+                    return;
+                } else {
+                    showSafetyAlert(false);
+                }
+
+                // Render components
+                renderProfileCard(data);
+                renderRoadmap(data.logs);
+                renderCourse(data);
+                renderJobs(data.matched_jobs);
+
+            } catch (err) {
+                console.error(err);
+                alert("Operation failed. Verify that your backend server is active at " + API_URL + " and your GROQ_API_KEY is correctly configured.");
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<span>Launch GigPilot AI Agent</span> <i class="fa-solid fa-arrow-right text-xs"></i>`;
+            }
+        }
+
+        function updateMcqProgress() {
+            const questions = document.querySelectorAll('#mcq-questions > div');
+            let answered = 0;
+            questions.forEach((_, idx) => {
+                const selected = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+                if (selected) answered++;
+            });
+            document.getElementById("quiz-progress").textContent = `${answered} / ${questions.length}`;
+        }
+
+        async function submitMcqQuiz() {
+            const questions = document.querySelectorAll('#mcq-questions > div');
+            if (questions.length === 0) return;
+
+            const answers = [];
+            let allAnswered = true;
+            questions.forEach((_, idx) => {
+                const selected = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+                if (selected) {
+                    answers.push(parseInt(selected.value));
+                } else {
+                    allAnswered = false;
+                    answers.push(-1);
+                }
+            });
+
+            if (!allAnswered) {
+                document.getElementById("quiz-error").classList.remove("hidden");
+                document.getElementById("quiz-error").textContent = "Please answer all questions before submitting.";
+                return;
+            }
+            document.getElementById("quiz-error").classList.add("hidden");
+
+            const btnQuiz = document.getElementById("btn-quiz");
+            btnQuiz.disabled = true;
+            btnQuiz.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> <span>Grading...</span>`;
+
+            try {
+                const res = await fetch(`${API_URL}/submit-quiz`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        worker_name: currentWorkerName,
+                        skill_name: currentSkillName,
+                        answers: answers
+                    }),
+                    mode: 'cors'
+                });
+
+                const data = await res.json();
+                const resultDiv = document.getElementById("quiz-result");
+                resultDiv.classList.remove("hidden", "bg-rose-50", "text-rose-700", "border", "border-rose-200", "bg-emerald-50", "text-emerald-700", "border-emerald-200");
+
+                if (data.success) {
+                    resultDiv.classList.add("bg-emerald-50", "text-emerald-700", "border", "border-emerald-200");
+                    
+                    let resultsHtml = data.results.map((r, idx) => `
+                        <div class="${r.is_correct ? 'bg-emerald-100/50' : 'bg-rose-100/50'} rounded-lg p-3">
+                            <p class="font-bold text-xs">Q${idx + 1}: ${r.is_correct ? '✅ Correct' : '❌ Incorrect'}</p>
+                            <p class="text-xs mt-1 opacity-80">${r.explanation}</p>
+                        </div>
+                    `).join('');
+
+                    resultDiv.innerHTML = `
+                        <div class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-check text-xl mt-1"></i>
+                            <div class="w-full">
+                                <p class="font-bold text-base">✅ Passed! ${data.score}/${data.total} (${data.percentage}%)</p>
+                                <p class="mt-1 text-sm opacity-80">${data.message}</p>
+                                <div class="mt-3 space-y-2">${resultsHtml}</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById("quiz-container").classList.add("hidden");
+                    document.getElementById("quiz-passed-box").classList.remove("hidden");
+                    document.getElementById("quiz-passed-box").classList.add("flex");
+
+                    updateLogs(`\n> [SYSTEM] User passed MCQ challenge for: '${currentSkillName}' (${data.score}/${data.total})\n> [SYSTEM] Newly unlocked skill registered.\n> [SYSTEM] Recalculating AI Placements...`);
+                    
+                    setTimeout(reloadState, 2000);
+
+                } else {
+                    resultDiv.classList.add("bg-rose-50", "text-rose-700", "border", "border-rose-200");
+                    
+                    let resultsHtml = data.results.map((r, idx) => `
+                        <div class="${r.is_correct ? 'bg-emerald-100/50' : 'bg-rose-100/50'} rounded-lg p-3">
+                            <p class="font-bold text-xs">Q${idx + 1}: ${r.is_correct ? '✅ Correct' : '❌ Incorrect'}</p>
+                            <p class="text-xs mt-1 opacity-80">Your answer: "${r.your_answer}"</p>
+                            <p class="text-xs opacity-80">Correct: "${r.correct_answer}"</p>
+                            <p class="text-xs mt-1 opacity-80">${r.explanation}</p>
+                        </div>
+                    `).join('');
+
+                    resultDiv.innerHTML = `
+                        <div class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-xmark text-xl mt-1"></i>
+                            <div class="w-full">
+                                <p class="font-bold text-base">❌ Failed - ${data.score}/${data.total} (${data.percentage}%) - Need 60%</p>
+                                <p class="mt-1 text-sm opacity-80">${data.message}</p>
+                                <div class="mt-3 space-y-2">${resultsHtml}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Could not evaluate quiz. Check backend connection.");
+            } finally {
+                btnQuiz.disabled = false;
+                btnQuiz.innerHTML = `<span>Submit All Answers</span> <i class="fa-solid fa-wand-magic-sparkles"></i>`;
+            }
+        }
+
+        async function reloadState() {
+            try {
+                const res = await fetch(`${API_URL}/worker/${encodeURIComponent(currentWorkerName)}`, { mode: 'cors' });
+                const data = await res.json();
+                
+                // Add logs update
+                updateLogs(data.logs);
+
+                // Rerun full intake form flow to refresh job matching
+                const form_goal = document.getElementById("career_goal").value;
+                const form_res = await fetch(`${API_URL}/run-agent`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        worker_name: currentWorkerName,
+                        current_skills: data.current_skills,
+                        career_goal: form_goal
+                    }),
+                    mode: 'cors'
+                });
+                const updatedData = await form_res.json();
+                
+                // Re-render
+                renderProfileCard(updatedData);
+                renderRoadmap(updatedData.logs);
+                renderJobs(updatedData.matched_jobs);
+                updateLogs(updatedData.logs);
+
+            } catch (err) {
+                console.error("Error reloading state:", err);
+            }
+        }
+
+        function renderProfileCard(data) {
+            document.getElementById("worker-card").classList.remove("hidden");
+            document.getElementById("profile-name").textContent = data.worker_name;
+            document.getElementById("profile-goal").textContent = data.career_goal;
+
+            // Initials
+            const initials = data.worker_name.split(" ").map(w => w[0]).join("").toUpperCase();
+            document.getElementById("profile-initials").textContent = initials.slice(0, 2);
+
+            const skillsContainer = document.getElementById("profile-skills");
+            skillsContainer.innerHTML = "";
+            data.current_skills.forEach(skill => {
+                const pill = document.createElement("span");
+                pill.className = "bg-slate-50 text-slate-700 text-[10px] font-bold px-2.5 py-1.5 rounded-xl border border-slate-200/60 uppercase tracking-wider shadow-sm";
+                pill.textContent = skill;
+                skillsContainer.appendChild(pill);
+            });
+        }
+
+        function renderRoadmap(logs) {
+            const roadmapSection = document.getElementById("roadmap-section");
+            const roadmapContent = document.getElementById("roadmap-content");
+
+            if (!logs) {
+                roadmapSection.classList.add("hidden");
+                return;
+            }
+
+            const marker = "[career_advisor]";
+            const index = logs.lastIndexOf(marker);
+            
+            if (index !== -1) {
+                roadmapSection.classList.remove("hidden");
+                // Extract text after the marker line
+                let text = logs.substring(index);
+                // Remove the first line (the [career_advisor] log line)
+                const firstNewline = text.indexOf("\n");
+                if (firstNewline !== -1) {
+                    text = text.substring(firstNewline + 1).trim();
+                } else {
+                    text = "";
+                }
+                // Convert markdown-like formatting to HTML
+                if (text) {
+                    roadmapContent.innerHTML = text
+                        .replace(/###\s*(.+)/g, '<h4 class="text-indigo-700 font-bold text-base mt-4 mb-2">$1</h4>')
+                        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-900">$1</strong>')
+                        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                        .replace(/- (.+)/g, '<li class="text-slate-600 ml-4 list-disc">$1</li>')
+                        .replace(/\n{2,}/g, '</p><p class="mt-2">')
+                        .replace(/^\s*(.+)/, '<p class="mt-1">$1</p>');
+                } else {
+                    roadmapSection.classList.add("hidden");
+                }
+            } else {
+                roadmapSection.classList.add("hidden");
+            }
+        }
+
+        function renderCourse(data) {
+            const courseSection = document.getElementById("course-section");
+            const lessonsContainer = document.getElementById("course-lessons");
+            
+            if (data.suggested_course && Object.keys(data.suggested_course).length > 0) {
+                courseSection.classList.remove("hidden");
+                currentSkillName = data.suggested_course.skill_name;
+                document.getElementById("course-skill").textContent = currentSkillName;
+                
+                // Render Lessons list
+                lessonsContainer.innerHTML = "";
+                data.suggested_course.micro_lessons.forEach((lesson, idx) => {
+                    lessonsContainer.innerHTML += `
+                        <div class="flex items-start space-x-3.5 p-4 bg-slate-50 hover:bg-slate-100/70 transition-all border border-slate-200/50 rounded-2xl">
+                            <span class="bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold w-7 h-7 rounded-xl flex items-center justify-center text-xs mt-0.5 flex-shrink-0 shadow-sm">${idx + 1}</span>
+                            <p class="text-xs text-slate-600 font-semibold leading-relaxed">${lesson}</p>
+                        </div>
+                    `;
+                });
+
+                // Populate MCQ questions
+                const questions = data.suggested_course.questions || [];
+                if (questions.length > 0) {
+                    document.getElementById("quiz-container").classList.remove("hidden");
+                    document.getElementById("quiz-progress").textContent = `0 / ${questions.length}`;
+                    document.getElementById("quiz-result").classList.add("hidden");
+                    
+                    const mcqContainer = document.getElementById("mcq-questions");
+                    mcqContainer.innerHTML = "";
+                    
+                    questions.forEach((q, qIdx) => {
+                        const qDiv = document.createElement("div");
+                        qDiv.className = "bg-white border border-slate-200 rounded-xl p-4 transition-all";
+                        qDiv.innerHTML = `
+                            <div class="flex items-start gap-3">
+                                <span class="bg-indigo-50 text-indigo-700 font-extrabold w-7 h-7 rounded-lg flex items-center justify-center text-xs flex-shrink-0 mt-0.5">${qIdx + 1}</span>
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-slate-800">${q.question}</p>
+                                    <div class="mt-3 space-y-2" id="options-${qIdx}">
+                                        ${q.options.map((opt, oIdx) => `
+                                            <label class="flex items-center p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-indigo-50/50 hover:border-indigo-200 cursor-pointer transition-all">
+                                                <input type="radio" name="mcq_${qIdx}" value="${oIdx}" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 mr-3" onchange="updateMcqProgress()">
+                                                <span class="text-sm text-slate-700 font-medium">${opt}</span>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        mcqContainer.appendChild(qDiv);
+                    });
+                    
+                    if (data.quiz_passed) {
+                        document.getElementById("quiz-passed-box").classList.remove("hidden");
+                        document.getElementById("quiz-passed-box").classList.add("flex");
+                        document.getElementById("quiz-container").classList.add("hidden");
+                    }
+                } else {
+                    document.getElementById("quiz-container").classList.add("hidden");
+                }
+            } else {
+                // Show SDG 8 career guidance even without a formal course
+                courseSection.classList.remove("hidden");
+                currentSkillName = "Career Growth";
+                document.getElementById("course-skill").textContent = "SDG 8: DECENT WORK";
+                lessonsContainer.innerHTML = `
+                    <div class="col-span-full bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5">
+                        <div class="flex items-start space-x-3">
+                            <div class="bg-emerald-100 text-emerald-600 p-2 rounded-xl text-lg flex-shrink-0">
+                                <i class="fa-solid fa-hand-holding-heart"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-emerald-900 text-sm">UN SDG 8: Decent Work & Economic Growth</h4>
+                                <p class="text-xs text-emerald-700 mt-2 leading-relaxed">
+                                    Your profile aligns with sustainable career growth. Focus on building skills that lead to 
+                                    <strong>fair wages, safe working conditions, and long-term economic mobility</strong>. 
+                                    Every worker deserves dignity, respect, and opportunity.
+                                </p>
+                                <p class="text-xs text-emerald-600 mt-2 font-semibold">
+                                    💡 Complete the quiz to unlock verified skills and new job placements.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById("quiz-container").classList.add("hidden");
+                document.getElementById("quiz-passed-box").classList.add("hidden");
+            }
+        }
+
+        function renderJobs(jobs) {
+            const jobsCountBadge = document.getElementById("jobs-count");
+            jobsCountBadge.textContent = `${jobs.length} Placements Found`;
+            
+            const jobsGrid = document.getElementById("jobs-grid");
+            jobsGrid.innerHTML = "";
+
+            if (jobs.length === 0) {
+                jobsGrid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-400 bg-slate-50/40 border border-dashed border-slate-200 rounded-3xl">
+                        <div class="bg-slate-100 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
+                            <i class="fa-solid fa-graduation-cap text-lg"></i>
+                        </div>
+                        <h5 class="text-slate-800 font-semibold text-sm">Skills Training in Progress</h5>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1">Please pass the comprehension quiz to gain active skills and unlock personalized job matching vacancies!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            jobs.forEach(job => {
+                // Ensure there is a safe list of tasks
+                const tasksHtml = job.tasks && job.tasks.length > 0
+                    ? job.tasks.map(task => `
+                        <li class="flex items-start space-x-2.5">
+                            <span class="text-emerald-500 mt-0.5 flex-shrink-0"><i class="fa-solid fa-circle-check text-xs"></i></span>
+                            <span class="text-xs text-slate-600 leading-relaxed font-medium">${task}</span>
+                        </li>
+                    `).join('')
+                    : `<li class="text-xs text-slate-400 italic">No tasks specified</li>`;
+
+                jobsGrid.innerHTML += `
+                    <div class="bg-white/80 border border-slate-200/70 hover:border-emerald-400/50 hover:shadow-xl hover:shadow-emerald-100/50 rounded-3xl p-6 transition-all flex flex-col justify-between gap-5 relative group overflow-hidden">
+                        <div class="absolute -top-10 -right-10 w-24 h-24 bg-emerald-500/5 group-hover:scale-150 rounded-full blur-2xl transition-all duration-500 pointer-events-none"></div>
+                        
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="bg-emerald-50 text-emerald-700 border border-emerald-200/50 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center space-x-1.5 shadow-sm">
+                                    <i class="fa-solid fa-shield-halved"></i> <span>Dignified Job</span>
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span class="bg-amber-50 text-amber-700 text-[8px] font-bold px-2 py-0.5 rounded-full border border-amber-200/40 uppercase tracking-wider">SDG 8</span>
+                                    <span class="text-xs text-slate-400 font-bold font-mono bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-xl">${job.job_id}</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-extrabold text-slate-900 text-base leading-snug group-hover:text-emerald-600 transition-colors">${job.title}</h4>
+                                <p class="text-slate-500 text-xs font-semibold mt-1.5 flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-slate-400"></i> ${job.location}</p>
+                            </div>
+
+                            <div class="border-t border-slate-100 my-4"></div>
+
+                            <!-- Dynamic Tasks List -->
+                            <div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3">AI-Generated Daily Tasks & Responsibilities</span>
+                                <ul class="space-y-2.5">
+                                    ${tasksHtml}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 mt-2">
+                            <div>
+                                <span class="text-slate-400 text-[9px] block font-extrabold uppercase tracking-widest">Matched Skill</span>
+                                <span class="text-emerald-700 font-bold text-xs uppercase tracking-wide truncate max-w-[140px] block">${job.required_skill}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-slate-400 text-[9px] block font-extrabold uppercase tracking-widest">Dignified Pay</span>
+                                <span class="text-emerald-600 font-extrabold text-sm">₹${job.hourly_pay}/hr</span>
+                            </div>
+                        </div>
+                        <div class="absolute bottom-2 right-3 text-[8px] text-emerald-300 font-semibold tracking-wider uppercase opacity-40">
+                            Decent Work & Economic Growth
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function showSafetyAlert(show, msg = "") {
+            const safetyAlert = document.getElementById("safety-alert");
+            const safetyMessage = document.getElementById("safety-message");
+            if (show) {
+                safetyAlert.classList.remove("hidden");
+                safetyMessage.textContent = msg;
+            } else {
+                safetyAlert.classList.add("hidden");
+            }
+        }
+
+        function hideSections() {
+            document.getElementById("worker-card").classList.add("hidden");
+            document.getElementById("roadmap-section").classList.add("hidden");
+            document.getElementById("course-section").classList.add("hidden");
+            document.getElementById("jobs-grid").innerHTML = `
+                <div class="col-span-full text-center py-12 text-rose-500 bg-rose-50/30 border border-dashed border-rose-200 rounded-3xl">
+                    <div class="bg-rose-100 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-500">
+                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    </div>
+                    <h5 class="text-rose-900 font-bold text-sm">Safety Interlock Engaged</h5>
+                    <p class="text-xs text-rose-700 max-w-sm mx-auto mt-1">This user session has been blocked because the stated career path violates safety policies.</p>
+                </div>
+            `;
+            document.getElementById("jobs-count").textContent = "BLOCKED";
+        }
+
+        function updateLogs(logText) {
+            const consoleLogs = document.getElementById("console-logs");
+            consoleLogs.textContent = logText;
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+        }
+
+        // Run initial system connection checks on load
+        checkHealth();
+    </script>
+</body>
+</html>
