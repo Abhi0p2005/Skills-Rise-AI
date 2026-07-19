@@ -1,6 +1,9 @@
 fastapi
 uvicorn
 langgraph
+dotenv
 langchain-groq
 langchain-core
 python-dotenv
+requests
+pytest
