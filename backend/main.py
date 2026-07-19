@@ -28,6 +28,9 @@ from langchain_core.messages import SystemMessage, HumanMessage
 # Import In-memory Data Store
 from .database import workers, courses, worker_progress
 
+# Import real job-data provider (Adzuna API) — replaces LLM-hallucinated jobs
+from .job_provider import fetch_jobs_for_skills
+
 # ---------------------------------------------------------------------------
 # Environment & Setup
 # ---------------------------------------------------------------------------
@@ -456,86 +459,56 @@ def job_matcher_node(state: WorkerState) -> WorkerState:
     worker_name = state.get("worker_name")
     career_goal = state.get("career_goal")
     current_skills = state.get("current_skills") or []
-    
+    suggested_course = state.get("suggested_course") or {}
+
     matched_jobs = []
-    
-    try:
-        llm = get_llm()
-        system_prompt = (
-            "You are an AI-powered Vocational Job Generator aligned with UN SDG 8 (Decent Work & Economic Growth). "
-            "Based on the worker's career goal and currently acquired skills, dynamically generate exactly 3 highly relevant, "
-            "realistic, and completely safe job listings that the worker can apply for or aim for. "
-            "For each job listing, generate a unique ID (e.g., J001, J002), a descriptive job title, the primary required skill "
-            "that matches or aligns with their goal, an hourly pay rate in INR (between ₹150 and ₹450), a realistic city location, "
-            "and most importantly, a list of 3-4 specific, actionable daily tasks/responsibilities for this job. "
-            "IMPORTANT: All jobs must be safe, completely legal, ethical, and non-hazardous. "
-            "Jobs must align with SDG 8 principles: fair wages, safe working conditions, no exploitation, social protection, and economic growth. "
-            "Return the jobs strictly in JSON format with no other text, comments, or wrappers. "
-            "Format:\n"
-            "{\n"
-            "  \"jobs\": [\n"
-            "    {\n"
-            "      \"job_id\": \"J001\",\n"
-            "      \"title\": \"Solar Installation Assistant\",\n"
-            "      \"required_skill\": \"solar panel installation\",\n"
-            "      \"hourly_pay\": 300,\n"
-            "      \"location\": \"Pune, MH\",\n"
-            "      \"tasks\": [\n"
-            "        \"Mount solar panels securely on residential rooftops under supervisor guidance\",\n"
-            "        \"Run DC cabling from arrays to the inverter housing safely\",\n"
-            "        \"Conduct post-installation safety and voltage testing\"\n"
-            "      ]\n"
-            "    }\n"
-            "  ]\n"
-            "}"
-        )
-        human_prompt = (
-            f"Worker Name: {worker_name}\n"
-            f"Worker Career Goal: {career_goal}\n"
-            f"Worker Active Skills: {current_skills}\n"
-        )
-        
-        response = llm.invoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=human_prompt),
-        ])
-        
-        raw = response.content.strip()
-        if "```" in raw:
-            raw = raw.split("```")[1].replace("json", "").strip()
-            
-        jobs_data = json.loads(raw)
-        matched_jobs = jobs_data.get("jobs", [])
-        
-    except Exception as e:
-        logger.error(f"AI Dynamic Job Generation error: {e}. Falling back to standard pre-defined jobs.")
-        # Match by skills AND career goal
+    used_live_source = False
+
+    # Query real listings for the worker's current skills AND the skill
+    # they're actively learning (if a course was assigned upstream) --
+    # mirrors the old "skills including in-progress learning" intent.
+    target_skills = list(dict.fromkeys(
+        [s for s in current_skills if s] +
+        ([suggested_course["skill_name"]] if suggested_course.get("skill_name") else [])
+    ))
+
+    if target_skills:
+        try:
+            matched_jobs = fetch_jobs_for_skills(target_skills, max_results_per_skill=3)
+            used_live_source = bool(matched_jobs)
+        except Exception as e:
+            logger.error(f"Adzuna job fetch error: {e}. Falling back to standard pre-defined jobs.")
+            matched_jobs = []
+
+    if not matched_jobs:
+        # Fallback: static pre-defined jobs, matched by skills AND career goal.
+        # Triggered when Adzuna isn't configured, the request fails, or it
+        # returns zero results for the worker's skill set -- same role this
+        # block played as the LLM-generation failure path before.
         skill_set = {s.lower() for s in current_skills}
         goal_lower = career_goal.lower() if career_goal else ""
-        
+
         def job_matches_goal(job: dict) -> bool:
             required = job["required_skill"].lower()
-            # Direct skill match
             if required in skill_set:
                 return True
-            # Career goal keyword match
             job_skill_keywords = SKILL_KEYWORDS.get(required, [])
             if any(kw in goal_lower for kw in job_skill_keywords):
                 return True
             return False
-        
+
         matched_jobs = [j for j in FALLBACK_JOBS if job_matches_goal(j)]
-        
-        # If still no matches, show the closest industry-aligned jobs
+
         if not matched_jobs:
             for j in FALLBACK_JOBS:
                 job_skill_keywords = SKILL_KEYWORDS.get(j["required_skill"].lower(), [])
                 if any(kw in goal_lower for kw in job_skill_keywords):
                     matched_jobs.append(j)
 
+    source_label = "live Adzuna listings" if used_live_source else "pre-defined fallback jobs"
     log_line = (
-        f"[job_matcher] Dynamic AI Agent generated {len(matched_jobs)} job openings "
-        f"complete with specialized daily tasks tailored for your skill profile."
+        f"[job_matcher] Found {len(matched_jobs)} job openings from {source_label} "
+        f"tailored for your skill profile."
     )
 
     # Sync state and logs back to Memory
