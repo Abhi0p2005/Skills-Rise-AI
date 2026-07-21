@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: gigpilot-ai-backend
+    runtime: python
+    repo: https://github.com/YOUR_USERNAME/YOUR_REPO.git
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
+        sync: false

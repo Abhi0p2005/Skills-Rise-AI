@@ -88,12 +88,6 @@
 
             <!-- Global Controls & Status -->
             <div class="flex flex-wrap items-center justify-center gap-3.5">
-                <!-- API URL Config Toggle Button -->
-                <button onclick="toggleSettingsModal()" class="flex items-center space-x-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all shadow-sm border border-slate-200/50">
-                    <i class="fa-solid fa-gears text-slate-500"></i>
-                    <span>API Endpoint Settings</span>
-                </button>
-
                 <!-- Server connection pill -->
                 <div id="connection-badge" class="bg-slate-100 text-slate-600 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm">
                     <span class="relative flex h-2 w-2">
@@ -353,34 +347,6 @@
         </div>
     </main>
 
-    <!-- Global API Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/45 backdrop-blur-sm hidden transition-all">
-        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 p-6 relative animate-slideup">
-            <button onclick="toggleSettingsModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 bg-slate-50 p-1.5 rounded-xl transition-all">
-                <i class="fa-solid fa-xmark text-sm"></i>
-            </button>
-            <div class="flex items-center space-x-2.5 mb-5">
-                <div class="bg-indigo-50 text-indigo-600 p-2 rounded-xl">
-                    <i class="fa-solid fa-network-wired"></i>
-                </div>
-                <h3 class="font-bold text-slate-900 text-base">API Server Endpoint Settings</h3>
-            </div>
-            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
-                Connect your frontend to any GigPilot AI Backend server. Perfect for switching seamlessly between a local server and Render.
-            </p>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Backend Server URL</label>
-                    <input type="text" id="api-url-input" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs font-mono font-medium" placeholder="http://127.0.0.1:8000">
-                </div>
-                <button onclick="saveApiUrl()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all shadow-md shadow-indigo-600/10 flex justify-center items-center space-x-1.5">
-                    <span>Save Server Configuration</span>
-                    <i class="fa-solid fa-floppy-disk"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200/60 py-10 mt-16 text-center text-xs text-slate-400 relative z-10">
         <div class="max-w-7xl mx-auto px-4 flex flex-col items-center gap-2">
@@ -398,59 +364,51 @@
 
     <!-- Frontend logic with Fetch -->
     <script>
-        // Check for saved API URL in localStorage or fallback
-        let API_URL = localStorage.getItem("GIGPILOT_API_URL") || "http://127.0.0.1:8000";
-        document.getElementById("api-url-input").value = API_URL;
+        // Change this to your actual Render URL
+        const API_URL = "https://gigpilot-ai-backend.onrender.com";
 
         let currentWorkerName = "";
         let currentSkillName = "";
-
-        // Modal triggers
-        function toggleSettingsModal() {
-            const modal = document.getElementById("settings-modal");
-            modal.classList.toggle("hidden");
-        }
-
-        function saveApiUrl() {
-            const inputVal = document.getElementById("api-url-input").value.trim();
-            if (inputVal) {
-                // Ensure no trailing slash
-                API_URL = inputVal.endsWith("/") ? inputVal.slice(0, -1) : inputVal;
-                localStorage.setItem("GIGPILOT_API_URL", API_URL);
-                toggleSettingsModal();
-                checkHealth();
-                updateLogs(`> Saved Server API Target: ${API_URL}`);
-            }
-        }
 
         async function checkHealth() {
             const badge = document.getElementById("connection-badge");
             const dot = document.getElementById("badge-dot");
             const text = document.getElementById("badge-text");
 
-            badge.className = "bg-amber-50 text-amber-600 border border-amber-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm animate-pulse";
-            dot.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
-            text.textContent = "Connecting...";
+            const tryConnect = async () => {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 30000);
+                const res = await fetch(`${API_URL}/health`, { mode: 'cors', signal: controller.signal });
+                clearTimeout(id);
+                return res.ok;
+            };
 
             try {
-                const startTime = performance.now();
-                const response = await fetch(`${API_URL}/health`, { mode: 'cors' });
-                const duration = Math.round(performance.now() - startTime);
-                
-                if (response.ok) {
-                    const data = await response.json();
+                const ok = await tryConnect();
+                if (ok) {
                     badge.className = "bg-emerald-50 text-emerald-700 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
                     dot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
-                    text.textContent = `Online (${duration}ms)`;
-                } else {
-                    throw new Error("Bad status");
+                    text.textContent = "Connected";
+                    return;
                 }
-            } catch (err) {
-                console.error("Health check failed:", err);
-                badge.className = "bg-rose-50 text-rose-600 border border-rose-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
-                dot.className = "relative inline-flex rounded-full h-2 w-2 bg-rose-500";
-                text.textContent = "Offline (Click Setup)";
-            }
+            } catch {}
+
+            // First attempt failed — retry once (Render cold start)
+            try {
+                text.textContent = "Waking server...";
+                await new Promise(r => setTimeout(r, 25000));
+                const ok = await tryConnect();
+                if (ok) {
+                    badge.className = "bg-emerald-50 text-emerald-700 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
+                    dot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+                    text.textContent = "Connected";
+                    return;
+                }
+            } catch {}
+
+            badge.className = "bg-slate-100 text-slate-500 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
+            dot.className = "relative inline-flex rounded-full h-2 w-2 bg-slate-400";
+            text.textContent = "Unreachable";
         }
 
         async function submitIntake(event) {
