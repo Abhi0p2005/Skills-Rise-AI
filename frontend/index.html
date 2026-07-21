@@ -375,40 +375,39 @@
             const dot = document.getElementById("badge-dot");
             const text = document.getElementById("badge-text");
 
-            const tryConnect = async () => {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 30000);
-                const res = await fetch(`${API_URL}/health`, { mode: 'cors', signal: controller.signal });
-                clearTimeout(id);
-                return res.ok;
-            };
-
-            try {
-                const ok = await tryConnect();
-                if (ok) {
+            function setBadge(color, label) {
+                if (color === "green") {
                     badge.className = "bg-emerald-50 text-emerald-700 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
                     dot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
-                    text.textContent = "Connected";
-                    return;
+                } else if (color === "amber") {
+                    badge.className = "bg-amber-50 text-amber-600 border border-amber-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm animate-pulse";
+                    dot.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
+                } else {
+                    badge.className = "bg-slate-100 text-slate-500 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
+                    dot.className = "relative inline-flex rounded-full h-2 w-2 bg-slate-400";
                 }
-            } catch {}
+                text.textContent = label;
+            }
 
-            // First attempt failed — retry once (Render cold start)
-            try {
-                text.textContent = "Waking server...";
-                await new Promise(r => setTimeout(r, 25000));
-                const ok = await tryConnect();
-                if (ok) {
-                    badge.className = "bg-emerald-50 text-emerald-700 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
-                    dot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
-                    text.textContent = "Connected";
-                    return;
+            setBadge("amber", "Connecting...");
+            const delays = [0, 30000, 60000];
+            for (let i = 0; i < delays.length; i++) {
+                if (delays[i] > 0) {
+                    setBadge("amber", "Waking server... (" + i + "/2)");
+                    await new Promise(r => setTimeout(r, delays[i]));
                 }
-            } catch {}
-
-            badge.className = "bg-slate-100 text-slate-500 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-sm";
-            dot.className = "relative inline-flex rounded-full h-2 w-2 bg-slate-400";
-            text.textContent = "Unreachable";
+                try {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), 50000);
+                    const res = await fetch(API_URL + "/health", { mode: 'cors', signal: controller.signal });
+                    clearTimeout(id);
+                    if (res.ok) {
+                        setBadge("green", "Connected");
+                        return;
+                    }
+                } catch {}
+            }
+            setBadge("slate", "Unreachable");
         }
 
         async function submitIntake(event) {
