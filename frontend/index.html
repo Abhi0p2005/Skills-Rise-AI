@@ -786,7 +786,7 @@
             }
 
             jobs.forEach(job => {
-                // Ensure there is a safe list of tasks
+                const isAdzuna = job.source === "adzuna";
                 const tasksHtml = job.tasks && job.tasks.length > 0
                     ? job.tasks.map(task => `
                         <li class="flex items-start space-x-2.5">
@@ -796,15 +796,25 @@
                     `).join('')
                     : `<li class="text-xs text-slate-400 italic">No tasks specified</li>`;
 
+                const payHtml = job.monthly_pay
+                    ? job.monthly_pay
+                    : "\u20B9" + job.hourly_pay + "/hr";
+
+                const sourceBadge = isAdzuna
+                    ? `<span class="bg-blue-50 text-blue-700 border border-blue-200/50 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center space-x-1.5 shadow-sm"><i class="fa-solid fa-building"></i> <span>Live \u00B7 Adzuna</span></span>`
+                    : `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200/50 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center space-x-1.5 shadow-sm"><i class="fa-solid fa-shield-halved"></i> <span>Curated</span></span>`;
+
+                const applyBtn = isAdzuna && job.apply_url
+                    ? `<a href="${job.apply_url}" target="_blank" class="inline-flex items-center justify-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm"><span>Apply Now</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>`
+                    : "";
+
                 jobsGrid.innerHTML += `
                     <div class="bg-white/80 border border-slate-200/70 hover:border-emerald-400/50 hover:shadow-xl hover:shadow-emerald-100/50 rounded-3xl p-6 transition-all flex flex-col justify-between gap-5 relative group overflow-hidden">
                         <div class="absolute -top-10 -right-10 w-24 h-24 bg-emerald-500/5 group-hover:scale-150 rounded-full blur-2xl transition-all duration-500 pointer-events-none"></div>
                         
                         <div class="space-y-4">
                             <div class="flex justify-between items-center">
-                                <span class="bg-emerald-50 text-emerald-700 border border-emerald-200/50 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center space-x-1.5 shadow-sm">
-                                    <i class="fa-solid fa-shield-halved"></i> <span>Dignified Job</span>
-                                </span>
+                                ${sourceBadge}
                                 <div class="flex items-center gap-2">
                                     <span class="bg-amber-50 text-amber-700 text-[8px] font-bold px-2 py-0.5 rounded-full border border-amber-200/40 uppercase tracking-wider">SDG 8</span>
                                     <span class="text-xs text-slate-400 font-bold font-mono bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-xl">${job.job_id}</span>
@@ -813,12 +823,14 @@
                             
                             <div>
                                 <h4 class="font-extrabold text-slate-900 text-base leading-snug group-hover:text-emerald-600 transition-colors">${job.title}</h4>
-                                <p class="text-slate-500 text-xs font-semibold mt-1.5 flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-slate-400"></i> ${job.location}</p>
+                                <p class="text-slate-500 text-xs font-semibold mt-1.5 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-location-dot text-slate-400"></i> ${job.location}
+                                    ${job.company ? `<span class="text-slate-300">|</span> <i class="fa-solid fa-building text-slate-400"></i> ${job.company}` : ""}
+                                </p>
                             </div>
 
                             <div class="border-t border-slate-100 my-4"></div>
 
-                            <!-- Dynamic Tasks List -->
                             <div>
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-3">AI-Generated Daily Tasks & Responsibilities</span>
                                 <ul class="space-y-2.5">
@@ -832,14 +844,15 @@
                                 <span class="text-slate-400 text-[9px] block font-extrabold uppercase tracking-widest">Matched Skill</span>
                                 <span class="text-emerald-700 font-bold text-xs uppercase tracking-wide truncate max-w-[140px] block">${job.required_skill}</span>
                             </div>
-                            <div class="text-right">
-                                <span class="text-slate-400 text-[9px] block font-extrabold uppercase tracking-widest">Dignified Pay</span>
-                                <span class="text-emerald-600 font-extrabold text-sm">₹${job.hourly_pay}/hr</span>
+                            <div class="text-right flex items-center gap-3">
+                                <div>
+                                    <span class="text-slate-400 text-[9px] block font-extrabold uppercase tracking-widest">Dignified Pay</span>
+                                    <span class="text-emerald-600 font-extrabold text-sm">${payHtml}</span>
+                                </div>
+                                ${applyBtn}
                             </div>
                         </div>
-                        <div class="absolute bottom-2 right-3 text-[8px] text-emerald-300 font-semibold tracking-wider uppercase opacity-40">
-                            Decent Work & Economic Growth
-                        </div>
+                        ${isAdzuna ? `<div class="absolute bottom-2 right-3 text-[8px] text-blue-300 font-semibold tracking-wider uppercase opacity-40">Live via Adzuna API</div>` : `<div class="absolute bottom-2 right-3 text-[8px] text-emerald-300 font-semibold tracking-wider uppercase opacity-40">Decent Work & Economic Growth</div>`}
                     </div>
                 `;
             });
