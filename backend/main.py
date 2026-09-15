@@ -122,7 +122,7 @@ def get_llm() -> ChatGroq:
             "or place it in a .env file."
         )
     return RateLimitedChatGroq(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.3-70b-specdec",
         temperature=0,
         api_key=GROQ_API_KEY,
     )
