@@ -1,4 +1,4 @@
-# GigPilot AI
+# GigPilot AI (Former SkillsRIse AI)
 
 **AI-Powered Vocational Upskilling & Dignified Job Matching**
 
